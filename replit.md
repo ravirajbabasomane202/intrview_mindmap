@@ -22,7 +22,7 @@ A calm, local-first educational note-taking app for arranging ideas on a soft 3D
 
 ## Where things live
 
-- `artifacts/mind-map-notebook/src/App.tsx` — notes home, canvas editor, canvas objects, drawing, connections, and local persistence.
+- `artifacts/mind-map-notebook/src/App.tsx` — notes home, templates, canvas editor, canvas objects, drawing, connections, export, and local persistence.
 - `artifacts/mind-map-notebook/src/index.css` — notebook theme tokens, typography, motion, and canvas texture.
 - `attached_assets/Pasted--Redesigned-Prompt-Minimal-3D-Mind-Map-Notebook-1-Produ_1789073353556.txt` — original product brief.
 
@@ -35,7 +35,7 @@ A calm, local-first educational note-taking app for arranging ideas on a soft 3D
 ## Product
 
 - My Notes home with search, favorites, note creation, deletion, and responsive note cards.
-- Canvas editor with pan, zoom, fit/reset, draggable text/formula/shape objects, inline editing, sizing, rotation, color changes, deletion, freehand drawing, and object connections.
+- Canvas editor with pan, zoom, fit/reset, draggable text/formula/image/table/shape objects, inline editing, sizing, rotation, color changes, deletion, freehand drawing, object connections, undo/redo, and PNG/PDF export.
 - Automatic local saving with a save status indicator and tolerant legacy storage normalization.
 
 ## User preferences

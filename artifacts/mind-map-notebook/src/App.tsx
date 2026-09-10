@@ -4,14 +4,14 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
-  ArrowLeft, Check, FileText, Grid2X2, Hand, Maximize2, Minus, MousePointer2,
-  Palette, PanelRight, Plus, Redo2, Search, Shapes, Sigma, Sparkles, Star,
-  Trash2, Undo2, ZoomIn,
+  ArrowLeft, Check, Download, FileImage, FileText, Grid2X2, ImageIcon, Maximize2,
+  Minus, MousePointer2, Palette, PanelRight, Plus, Redo2, Search, Shapes, Sigma,
+  Sparkles, Star, Table2, Trash2, Undo2, ZoomIn,
 } from 'lucide-react';
 import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import NotFound from '@/pages/not-found';
 
-type ObjectType = 'text' | 'formula' | 'shape';
+type ObjectType = 'text' | 'formula' | 'image' | 'table' | 'shape';
 type Tool = 'select' | 'draw' | 'connect';
 type Point = { x: number; y: number };
 type Stroke = { id: string; points: Point[] };
@@ -56,6 +56,8 @@ const seedNotes: Note[] = [
       { id: 'p2', type: 'text', x: -300, y: 78, width: 210, height: 102, rotation: -2, zIndex: 2, content: 'Light energy\nbecomes chemical energy', color: '#334155', fill: '#f7dfbd' },
       { id: 'p3', type: 'formula', x: 85, y: 78, width: 260, height: 102, rotation: 2, zIndex: 2, content: '6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂', color: '#334155', fill: '#d8e4ee' },
     ],
+    connections: [],
+    strokes: [],
   },
   {
     id: 'renaissance',
@@ -67,6 +69,8 @@ const seedNotes: Note[] = [
       { id: 'r1', type: 'shape', x: -170, y: -55, width: 340, height: 90, rotation: 0, zIndex: 1, content: 'A cultural reset', color: '#1f5e60', fill: '#f4cfc8' },
       { id: 'r2', type: 'text', x: -125, y: 110, width: 250, height: 84, rotation: -3, zIndex: 2, content: 'Florence\n→ humanism\n→ new ways of seeing', color: '#334155', fill: '#d9ebe3' },
     ],
+    connections: [],
+    strokes: [],
   },
   {
     id: 'geometry',
@@ -78,6 +82,8 @@ const seedNotes: Note[] = [
       { id: 'g1', type: 'shape', x: -125, y: -70, width: 250, height: 92, rotation: 0, zIndex: 1, content: 'Triangle congruence', color: '#1f5e60', fill: '#d8e4ee' },
       { id: 'g2', type: 'formula', x: -175, y: 90, width: 350, height: 74, rotation: 1, zIndex: 2, content: 'SAS  ·  ASA  ·  SSS', color: '#334155', fill: '#f7dfbd' },
     ],
+    connections: [],
+    strokes: [],
   },
 ];
 
@@ -136,20 +142,40 @@ function ToolButton({ label, onClick, active = false, testId }: { label: string;
   );
 }
 
+function templateObjects(template: string): CanvasObject[] {
+  if (template === 'Mind map') {
+    return [
+      { id: uid('shape'), type: 'shape', x: -150, y: -60, width: 300, height: 100, rotation: 0, zIndex: 1, content: 'Central idea', color: '#1f5e60', fill: '#d9ebe3' },
+      { id: uid('text'), type: 'text', x: -370, y: 120, width: 220, height: 90, rotation: -2, zIndex: 2, content: 'First branch', color: '#334155', fill: '#f7dfbd' },
+      { id: uid('text'), type: 'text', x: 150, y: 120, width: 220, height: 90, rotation: 2, zIndex: 2, content: 'Second branch', color: '#334155', fill: '#d8e4ee' },
+    ];
+  }
+  if (template === 'Math study') {
+    return [
+      { id: uid('formula'), type: 'formula', x: -180, y: -90, width: 360, height: 90, rotation: 0, zIndex: 1, content: 'a² + b² = c²', color: '#334155', fill: '#d8e4ee' },
+      { id: uid('text'), type: 'text', x: -180, y: 75, width: 360, height: 100, rotation: -1, zIndex: 2, content: 'What do I know?\nWhat do I need to prove?', color: '#334155', fill: '#f7dfbd' },
+    ];
+  }
+  return [];
+}
+
 function Home() {
   const [notes, setNotes] = useState<Note[]>(readNotes);
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
 
   useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)), [notes]);
 
-  const createNote = () => {
+  const createNote = (template = 'Blank canvas') => {
     const note: Note = {
-      id: uid('note'), title: 'Untitled map', template: 'Blank canvas',
-      updatedAt: new Date().toISOString(), favorite: false, objects: [],
+      id: uid('note'), title: template === 'Blank canvas' ? 'Untitled map' : template,
+      template, updatedAt: new Date().toISOString(), favorite: false,
+      objects: templateObjects(template), connections: [], strokes: [],
     };
     setNotes((current) => [note, ...current]);
+    setTemplateMenuOpen(false);
     setLocation(`/note/${note.id}`);
   };
   const toggleFavorite = (id: string) => setNotes((current) => current.map((n) => n.id === id ? { ...n, favorite: !n.favorite, updatedAt: new Date().toISOString() } : n));
@@ -174,10 +200,16 @@ function Home() {
             <h1 className="font-serif text-5xl leading-[.98] tracking-[-.045em] text-[hsl(var(--foreground))] sm:text-6xl">My Notes</h1>
             <p className="mt-4 max-w-md text-[15px] leading-7 text-[hsl(var(--muted-foreground))]">Arrange the pieces. Follow the thread. Keep the good questions close.</p>
           </div>
-          <button type="button" onClick={createNote} data-testid="button-new-note"
-            className="group flex w-fit items-center gap-2.5 rounded-2xl bg-[hsl(var(--primary))] px-5 py-3.5 text-sm font-semibold text-[hsl(var(--primary-foreground))] shadow-[0_10px_24px_hsl(183_41%_30%/.18)] transition-transform hover:-translate-y-0.5 active:translate-y-0">
-            <Plus size={18} /> New note <span className="ml-2 text-lg font-normal opacity-50 transition-transform group-hover:translate-x-0.5">→</span>
-          </button>
+          <div className="relative">
+            <button type="button" onClick={() => setTemplateMenuOpen((value) => !value)} data-testid="button-new-note"
+              className="group flex w-fit items-center gap-2.5 rounded-2xl bg-[hsl(var(--primary))] px-5 py-3.5 text-sm font-semibold text-[hsl(var(--primary-foreground))] shadow-[0_10px_24px_hsl(183_41%_30%/.18)] transition-transform hover:-translate-y-0.5 active:translate-y-0">
+              <Plus size={18} /> New note <span className="ml-2 text-lg font-normal opacity-50 transition-transform group-hover:translate-x-0.5">→</span>
+            </button>
+            {templateMenuOpen && <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-52 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-[0_16px_30px_hsl(30_20%_40%/.14)]" data-testid="menu-note-templates">
+              <p className="px-2 pb-1.5 pt-1 font-mono text-[9px] uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">Start with a template</p>
+              {['Blank canvas', 'Mind map', 'Math study'].map((template) => <button key={template} type="button" onClick={() => createNote(template)} className="flex w-full items-center justify-between rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-[hsl(var(--muted))]"><span>{template}</span><span className="text-[hsl(var(--muted-foreground))]">→</span></button>)}
+            </div>}
+          </div>
         </div>
         <div className="mt-12 flex items-center justify-between gap-4 border-b border-[hsl(var(--border))] pb-3">
           <div className="flex gap-6 text-sm">
@@ -193,7 +225,7 @@ function Home() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><FileText size={25} /></div>
             <h2 className="font-serif text-2xl">A blank page is a beginning</h2>
             <p className="mt-2 max-w-sm text-sm text-[hsl(var(--muted-foreground))]">Start a note and let the shape of your thinking emerge.</p>
-            <button type="button" onClick={createNote} className="mt-6 rounded-xl bg-[hsl(var(--primary))] px-4 py-2 text-sm font-semibold text-[hsl(var(--primary-foreground))]" data-testid="button-empty-new-note">Create a note</button>
+            <button type="button" onClick={() => createNote()} className="mt-6 rounded-xl bg-[hsl(var(--primary))] px-4 py-2 text-sm font-semibold text-[hsl(var(--primary-foreground))]" data-testid="button-empty-new-note">Create a note</button>
           </div>
         ) : (
           <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -228,6 +260,104 @@ function Home() {
   );
 }
 
+function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+function saveBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function exportNoteAsPng(note: Note) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1400;
+  canvas.height = 900;
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  context.fillStyle = '#fbf9f4';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.translate(canvas.width / 2, canvas.height / 2);
+
+  for (const connection of note.connections ?? []) {
+    const from = note.objects.find((object) => object.id === connection.from);
+    const to = note.objects.find((object) => object.id === connection.to);
+    if (!from || !to) continue;
+    context.strokeStyle = 'rgba(31, 94, 96, .45)';
+    context.lineWidth = 3;
+    context.setLineDash([10, 10]);
+    context.beginPath();
+    context.moveTo(from.x + from.width / 2, from.y + from.height / 2);
+    context.lineTo(to.x + to.width / 2, to.y + to.height / 2);
+    context.stroke();
+    context.setLineDash([]);
+  }
+  for (const stroke of note.strokes ?? []) {
+    if (stroke.points.length < 2) continue;
+    context.strokeStyle = 'rgba(31, 94, 96, .65)';
+    context.lineWidth = 5;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.beginPath();
+    context.moveTo(stroke.points[0].x, stroke.points[0].y);
+    stroke.points.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+    context.stroke();
+  }
+  for (const object of note.objects) {
+    context.save();
+    context.translate(object.x + object.width / 2, object.y + object.height / 2);
+    context.rotate((object.rotation * Math.PI) / 180);
+    context.shadowColor = 'rgba(69, 59, 45, .14)';
+    context.shadowBlur = 18;
+    context.shadowOffsetY = 8;
+    context.fillStyle = object.fill;
+    roundedRect(context, -object.width / 2, -object.height / 2, object.width, object.height, 18);
+    context.fill();
+    context.shadowColor = 'transparent';
+    context.fillStyle = object.color;
+    if (object.type === 'image' && object.content.startsWith('data:')) {
+      await new Promise<void>((resolve) => {
+        const image = new Image();
+        image.onload = () => {
+          context.drawImage(image, -object.width / 2 + 8, -object.height / 2 + 8, object.width - 16, object.height - 16);
+          resolve();
+        };
+        image.onerror = () => resolve();
+        image.src = object.content;
+      });
+    } else if (object.type === 'table') {
+      const rows = object.content.split('\n').map((row) => row.split('\t'));
+      const cellWidth = object.width / 2;
+      const cellHeight = object.height / Math.max(rows.length, 1);
+      context.font = '16px "DM Sans", sans-serif';
+      rows.forEach((row, rowIndex) => row.slice(0, 2).forEach((cell, cellIndex) => {
+        context.strokeStyle = 'rgba(31, 94, 96, .25)';
+        context.strokeRect(-object.width / 2 + cellIndex * cellWidth, -object.height / 2 + rowIndex * cellHeight, cellWidth, cellHeight);
+        context.fillText(cell, -object.width / 2 + cellIndex * cellWidth + 12, -object.height / 2 + rowIndex * cellHeight + 26);
+      }));
+    } else {
+      context.font = object.type === 'shape' ? '600 26px Fraunces, serif' : '16px "DM Sans", sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      object.content.split('\n').forEach((line, lineIndex, lines) => context.fillText(line, 0, (lineIndex - (lines.length - 1) / 2) * 24));
+    }
+    context.restore();
+  }
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (blob) saveBlob(blob, `${note.title.replace(/\s+/g, '-').toLowerCase()}.png`);
+}
+
 function NoteEditor() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -244,6 +374,9 @@ function NoteEditor() {
   const [saveState, setSaveState] = useState('All changes saved');
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null);
+  const [undoStack, setUndoStack] = useState<Note[][]>([]);
+  const [redoStack, setRedoStack] = useState<Note[][]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ kind: 'pan' | 'object' | 'draw'; pointerX: number; pointerY: number; startX: number; startY: number; objectId?: string } | null>(null);
 
@@ -261,21 +394,64 @@ function NoteEditor() {
   }, [id, selectedId]);
 
   const selected = useMemo(() => note?.objects.find((object) => object.id === selectedId), [note, selectedId]);
-  const mutateNote = useCallback((updater: (current: Note) => Note) => {
-    setNotes((current) => current.map((item) => item.id === id ? updater(item) : item));
+  const mutateNote = useCallback((updater: (current: Note) => Note, recordHistory = true) => {
+    setNotes((current) => {
+      if (recordHistory) {
+        setUndoStack((stack) => [...stack.slice(-39), JSON.parse(JSON.stringify(current)) as Note[]]);
+        setRedoStack([]);
+      }
+      return current.map((item) => item.id === id ? updater(item) : item);
+    });
     setSaveState('Saved locally');
   }, [id]);
-  const updateObject = (objectId: string, patch: Partial<CanvasObject>) => mutateNote((current) => ({ ...current, updatedAt: new Date().toISOString(), objects: current.objects.map((object) => object.id === objectId ? { ...object, ...patch } : object) }));
-  const addObject = (type: ObjectType) => {
+  const pushHistorySnapshot = () => {
+    setUndoStack((stack) => [...stack.slice(-39), JSON.parse(JSON.stringify(notes)) as Note[]]);
+    setRedoStack([]);
+  };
+  const undo = () => {
+    if (!undoStack.length) {
+      setSaveState('Nothing to undo yet');
+      return;
+    }
+    const previous = undoStack[undoStack.length - 1];
+    setUndoStack((stack) => stack.slice(0, -1));
+    setRedoStack((stack) => [...stack, JSON.parse(JSON.stringify(notes)) as Note[]]);
+    setNotes(previous);
+    setSaveState('Undo saved locally');
+    setSelectedId(null);
+  };
+  const redo = () => {
+    if (!redoStack.length) {
+      setSaveState('Nothing to redo yet');
+      return;
+    }
+    const next = redoStack[redoStack.length - 1];
+    setRedoStack((stack) => stack.slice(0, -1));
+    setUndoStack((stack) => [...stack, JSON.parse(JSON.stringify(notes)) as Note[]]);
+    setNotes(next);
+    setSaveState('Redo saved locally');
+  };
+  const updateObject = (objectId: string, patch: Partial<CanvasObject>, recordHistory = true) => mutateNote((current) => ({ ...current, updatedAt: new Date().toISOString(), objects: current.objects.map((object) => object.id === objectId ? { ...object, ...patch } : object) }), recordHistory);
+  const addObject = (type: ObjectType, contentOverride?: string) => {
     const defaults: Record<ObjectType, Partial<CanvasObject>> = {
       text: { width: 220, height: 110, content: 'A thought worth keeping', fill: '#f7dfbd', color: '#334155' },
       formula: { width: 290, height: 82, content: 'x + y = a useful question', fill: '#d8e4ee', color: '#334155' },
+      image: { width: 280, height: 190, content: contentOverride ?? '', fill: '#f5f1e9', color: '#334155' },
+      table: { width: 300, height: 150, content: 'Question\tAnswer\nWhat matters?\tMake it visible', fill: '#f5f1e9', color: '#334155' },
       shape: { width: 260, height: 100, content: 'New idea', fill: '#d9ebe3', color: '#1f5e60' },
     };
     const preset = defaults[type];
     const object: CanvasObject = { id: uid(type), type, x: -Number(preset.width) / 2 + (note?.objects.length ?? 0) * 22, y: -40 + (note?.objects.length ?? 0) * 22, rotation: type === 'text' ? -2 : 0, zIndex: (note?.objects.length ?? 0) + 1, ...preset } as CanvasObject;
     mutateNote((current) => ({ ...current, updatedAt: new Date().toISOString(), objects: [...current.objects, object] }));
     setSelectedId(object.id); setEditingObjectId(object.id); setAddMenuOpen(false); setTool('select');
+  };
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => addObject('image', String(reader.result));
+    reader.readAsDataURL(file);
+    event.target.value = '';
   };
   const canvasPoint = (event: React.PointerEvent): Point => {
     const bounds = surfaceRef.current?.getBoundingClientRect();
@@ -321,6 +497,7 @@ function NoteEditor() {
       return;
     }
     event.stopPropagation(); setSelectedId(object.id); setEditingObjectId(null);
+    pushHistorySnapshot();
     dragRef.current = { kind: 'object', pointerX: event.clientX, pointerY: event.clientY, startX: object.x, startY: object.y, objectId: object.id };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   };
@@ -329,7 +506,7 @@ function NoteEditor() {
     if (!drag) return;
     if (drag.kind === 'pan') setPan({ x: drag.startX + event.clientX - drag.pointerX, y: drag.startY + event.clientY - drag.pointerY });
     else if (drag.kind === 'draw') setDrawPoints((current) => [...current, canvasPoint(event)]);
-    else if (drag.objectId) updateObject(drag.objectId, { x: drag.startX + (event.clientX - drag.pointerX) / zoom, y: drag.startY + (event.clientY - drag.pointerY) / zoom });
+    else if (drag.objectId) updateObject(drag.objectId, { x: drag.startX + (event.clientX - drag.pointerX) / zoom, y: drag.startY + (event.clientY - drag.pointerY) / zoom }, false);
   };
   const endPointer = () => {
     if (dragRef.current?.kind === 'draw' && drawPoints.length > 1) {
@@ -340,6 +517,10 @@ function NoteEditor() {
     dragRef.current = null;
   };
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  const printNote = () => {
+    document.title = note?.title ?? 'Mind Map Notebook';
+    window.print();
+  };
 
   if (!note) return <div className="flex min-h-[100dvh] items-center justify-center"><div className="text-center"><p className="font-serif text-2xl">This note has wandered off.</p><Link href="/" className="mt-4 inline-block text-sm text-[hsl(var(--primary))]">Return to My Notes</Link></div></div>;
 
@@ -353,21 +534,28 @@ function NoteEditor() {
           <div className="ml-1 hidden h-6 w-px bg-[hsl(var(--border))] sm:block" />
           {editingTitle ? <input autoFocus value={note.title} onChange={(event) => mutateNote((current) => ({ ...current, title: event.target.value }))} onBlur={() => setEditingTitle(false)} onKeyDown={(event) => event.key === 'Enter' && setEditingTitle(false)} className="w-44 rounded-lg border border-[hsl(var(--primary)/.35)] bg-transparent px-2 py-1 text-sm font-semibold outline-none sm:w-64" data-testid="input-note-title" /> : <button type="button" onClick={() => setEditingTitle(true)} className="max-w-[190px] truncate text-left text-sm font-semibold hover:text-[hsl(var(--primary))] sm:max-w-xs" data-testid="button-edit-note-title">{note.title}</button>}
         </div>
-        <div className="flex items-center gap-2 sm:gap-4">
-          <span className="hidden items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))] sm:flex" data-testid="status-save"><Check size={14} className="text-[hsl(var(--primary))]" /> {saveState}</span>
-          <button type="button" onClick={() => setShowInspector((value) => !value)} className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${showInspector ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'}`} aria-label="Toggle inspector" data-testid="button-toggle-inspector"><PanelRight size={17} /></button>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-[10px] font-bold text-[hsl(var(--primary-foreground))]">AM</div>
-        </div>
+         <div className="flex items-center gap-1.5 sm:gap-3">
+           <button type="button" onClick={undo} aria-label="Undo" title="Undo" data-testid="button-undo" className="hidden h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] sm:flex"><Undo2 size={16} /></button>
+           <button type="button" onClick={redo} aria-label="Redo" title="Redo" data-testid="button-redo" className="hidden h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] sm:flex"><Redo2 size={16} /></button>
+           <span className="hidden items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))] sm:flex" data-testid="status-save"><Check size={14} className="text-[hsl(var(--primary))]" /> {saveState}</span>
+           <button type="button" onClick={() => void exportNoteAsPng(note)} aria-label="Export PNG" title="Export PNG" data-testid="button-export-png" className="flex h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"><FileImage size={16} /></button>
+           <button type="button" onClick={printNote} aria-label="Export PDF" title="Print or export PDF" data-testid="button-export-pdf" className="flex h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"><Download size={16} /></button>
+           <button type="button" onClick={() => setShowInspector((value) => !value)} className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${showInspector ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'}`} aria-label="Toggle inspector" data-testid="button-toggle-inspector"><PanelRight size={17} /></button>
+           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-[10px] font-bold text-[hsl(var(--primary-foreground))]">AM</div>
+         </div>
       </header>
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
          <aside className="z-10 flex w-[118px] shrink-0 flex-col items-center border-r border-[hsl(var(--border))] bg-[hsl(var(--card)/.7)] px-3 py-5 backdrop-blur-sm">
            <div className="flex w-full flex-col gap-2">
              <div className="relative">
                <ToolButton label="+ Add" onClick={() => setAddMenuOpen((value) => !value)} active={addMenuOpen} testId="button-add" />
+               <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" data-testid="input-image-upload" />
                {addMenuOpen && <div className="absolute left-[calc(100%+10px)] top-0 z-30 w-44 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-2 shadow-[0_16px_30px_hsl(30_20%_40%/.14)]" data-testid="menu-add">
                  <p className="px-2 pb-1.5 pt-1 font-mono text-[9px] uppercase tracking-[.14em] text-[hsl(var(--muted-foreground))]">Add to canvas</p>
                  <button type="button" onClick={() => addObject('text')} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-[hsl(var(--muted))]"><FileText size={15} /> Text note</button>
                  <button type="button" onClick={() => addObject('formula')} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-[hsl(var(--muted))]"><Sigma size={15} /> Math formula</button>
+                 <button type="button" onClick={() => imageInputRef.current?.click()} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-[hsl(var(--muted))]"><ImageIcon size={15} /> Image</button>
+                 <button type="button" onClick={() => addObject('table')} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-[hsl(var(--muted))]"><Table2 size={15} /> Table</button>
                  <button type="button" onClick={() => addObject('shape')} className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-[hsl(var(--muted))]"><Shapes size={15} /> Shape</button>
                </div>}
              </div>
@@ -396,13 +584,13 @@ function NoteEditor() {
                {(note.strokes ?? []).map((stroke) => <polyline key={stroke.id} points={stroke.points.map((point) => `${point.x},${point.y}`).join(' ')} fill="none" stroke="hsl(183 41% 30% / .65)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />)}
                {drawPoints.length > 1 && <polyline points={drawPoints.map((point) => `${point.x},${point.y}`).join(' ')} fill="none" stroke="hsl(183 41% 30% / .65)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />}
              </svg>
-            {note.objects.map((object) => (
-              <div key={object.id} className={`canvas-object absolute flex items-center justify-center text-center shadow-[0_8px_18px_hsl(30_20%_40%/.11)] transition-shadow ${selectedId === object.id ? 'ring-2 ring-[hsl(var(--accent))] ring-offset-4 ring-offset-[hsl(var(--background))]' : 'hover:shadow-[0_12px_22px_hsl(30_20%_40%/.17)]'} ${object.type === 'shape' ? 'rounded-2xl' : 'rounded-xl'}`}
-                style={{ left: object.x, top: object.y, width: object.width, height: object.height, zIndex: object.zIndex, backgroundColor: object.fill, color: object.color, transform: `rotate(${object.rotation}deg)` }} onPointerDown={(event) => startObjectDrag(event, object)} onDoubleClick={() => setEditingObjectId(object.id)} data-testid={`canvas-object-${object.id}`}>
-                {editingObjectId === object.id ? <textarea autoFocus value={object.content} onChange={(event) => updateObject(object.id, { content: event.target.value })} onBlur={() => setEditingObjectId(null)} className="h-[78%] w-[85%] resize-none rounded-lg border border-[hsl(var(--primary)/.3)] bg-[hsl(var(--card)/.4)] p-2 text-center text-sm outline-none" data-testid={`textarea-object-${object.id}`} /> : <span className={`whitespace-pre-line px-5 ${object.type === 'shape' ? 'font-serif text-2xl font-semibold tracking-[-.04em]' : object.type === 'formula' ? 'font-mono text-sm' : 'text-sm font-medium leading-6'}`}>{object.content}</span>}
-                {selectedId === object.id && <span className="absolute -right-2 -top-2 h-3 w-3 rounded-full border-2 border-[hsl(var(--background))] bg-[hsl(var(--accent))]" />}
-              </div>
-            ))}
+             {note.objects.map((object) => (
+               <div key={object.id} className={`canvas-object absolute flex items-center justify-center overflow-hidden text-center shadow-[0_8px_18px_hsl(30_20%_40%/.11)] transition-shadow ${selectedId === object.id ? 'ring-2 ring-[hsl(var(--accent))] ring-offset-4 ring-offset-[hsl(var(--background))]' : 'hover:shadow-[0_12px_22px_hsl(30_20%_40%/.17)]'} ${object.type === 'shape' ? 'rounded-2xl' : 'rounded-xl'}`}
+                 style={{ left: object.x, top: object.y, width: object.width, height: object.height, zIndex: object.zIndex, backgroundColor: object.fill, color: object.color, transform: `rotate(${object.rotation}deg)` }} onPointerDown={(event) => startObjectDrag(event, object)} onDoubleClick={() => object.type !== 'image' && setEditingObjectId(object.id)} data-testid={`canvas-object-${object.id}`}>
+                 {object.type === 'image' && object.content.startsWith('data:') ? <img src={object.content} alt="Canvas upload" className="h-full w-full object-cover" /> : editingObjectId === object.id ? <textarea autoFocus value={object.content} onChange={(event) => updateObject(object.id, { content: event.target.value })} onBlur={() => setEditingObjectId(null)} className="h-[78%] w-[85%] resize-none rounded-lg border border-[hsl(var(--primary)/.3)] bg-[hsl(var(--card)/.4)] p-2 text-center text-sm outline-none" data-testid={`textarea-object-${object.id}`} /> : object.type === 'table' ? <div className="grid w-full grid-cols-2 text-left text-xs">{object.content.split('\n').flatMap((row, rowIndex) => row.split('\t').slice(0, 2).map((cell, cellIndex) => <div key={`${rowIndex}-${cellIndex}`} className="border-b border-r border-[hsl(var(--primary)/.18)] px-2 py-2 last:border-b-0">{cell}</div>))}</div> : <span className={`whitespace-pre-line px-5 ${object.type === 'shape' ? 'font-serif text-2xl font-semibold tracking-[-.04em]' : object.type === 'formula' ? 'font-mono text-sm' : 'text-sm font-medium leading-6'}`}>{object.content}</span>}
+                 {selectedId === object.id && <span className="absolute -right-2 -top-2 h-3 w-3 rounded-full border-2 border-[hsl(var(--background))] bg-[hsl(var(--accent))]" />}
+               </div>
+             ))}
           </div>
           {note.objects.length === 0 && <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><Sparkles size={23} /></div><p className="font-serif text-2xl">Start with one thought</p><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Choose a tool on the left to begin arranging.</p></div>}
           <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card)/.9)] p-1.5 shadow-[0_8px_20px_hsl(30_20%_40%/.09)] backdrop-blur-md">
@@ -423,8 +611,8 @@ function Inspector({ object, onUpdate, onDelete }: { object?: CanvasObject; onUp
   return (
     <aside className="z-10 w-[274px] shrink-0 overflow-y-auto border-l border-[hsl(var(--border))] bg-[hsl(var(--card)/.92)] p-5 backdrop-blur-md max-[900px]:absolute max-[900px]:bottom-0 max-[900px]:right-0 max-[900px]:top-0 max-[640px]:w-[calc(100%-68px)]" data-testid="panel-inspector">
       <div className="mb-7 flex items-center justify-between"><div><p className="font-mono text-[10px] uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">Contextual edit</p><h2 className="mt-1 font-serif text-2xl">{object ? 'Piece details' : 'Nothing selected'}</h2></div><Palette size={17} className="text-[hsl(var(--accent))]" /></div>
-      {object ? <div className="space-y-6 animate-pop">
-        <div><label className="mb-2 block text-xs font-semibold text-[hsl(var(--muted-foreground))]">Content</label><textarea value={object.content} onChange={(event) => onUpdate(object.id, { content: event.target.value })} className="min-h-24 w-full resize-none rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-3 text-sm leading-6 outline-none transition-colors focus:border-[hsl(var(--primary))]" data-testid="textarea-selected-content" /></div>
+       {object ? <div className="space-y-6 animate-pop">
+         {object.type === 'image' ? <div className="rounded-2xl bg-[hsl(var(--secondary)/.6)] p-3"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[hsl(var(--muted-foreground))]"><ImageIcon size={15} /> Image attached</div><p className="text-xs leading-5 text-[hsl(var(--muted-foreground))]">Resize or rotate this image from the controls below.</p></div> : <div><label className="mb-2 block text-xs font-semibold text-[hsl(var(--muted-foreground))]">{object.type === 'table' ? 'Cells (tab-separated)' : 'Content'}</label><textarea value={object.content} onChange={(event) => onUpdate(object.id, { content: event.target.value })} className="min-h-24 w-full resize-none rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-3 text-sm leading-6 outline-none transition-colors focus:border-[hsl(var(--primary))]" data-testid="textarea-selected-content" /></div>}
         <div><label className="mb-2 block text-xs font-semibold text-[hsl(var(--muted-foreground))]">Fill</label><div className="flex flex-wrap gap-2">{colors.map((color) => <button key={color} type="button" aria-label={`Set fill ${color}`} onClick={() => onUpdate(object.id, { fill: color })} className={`h-8 w-8 rounded-lg border-2 transition-transform hover:scale-110 ${object.fill === color ? 'border-[hsl(var(--primary))] ring-2 ring-[hsl(var(--primary)/.18)] ring-offset-2' : 'border-transparent'}`} style={{ backgroundColor: color }} data-testid={`button-color-${color.slice(1)}`} />)}</div></div>
         <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">Width<input type="number" value={object.width} onChange={(event) => onUpdate(object.id, { width: Number(event.target.value) })} className="mt-2 w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2 text-xs outline-none" data-testid="input-object-width" /></label><label className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">Height<input type="number" value={object.height} onChange={(event) => onUpdate(object.id, { height: Number(event.target.value) })} className="mt-2 w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-2 text-xs outline-none" data-testid="input-object-height" /></label></div>
         <div><label className="mb-2 block text-xs font-semibold text-[hsl(var(--muted-foreground))]">Rotation <span className="font-mono font-normal">{object.rotation}°</span></label><input type="range" min="-12" max="12" value={object.rotation} onChange={(event) => onUpdate(object.id, { rotation: Number(event.target.value) })} className="w-full accent-[hsl(var(--primary))]" data-testid="input-object-rotation" /></div>
