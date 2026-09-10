@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Mind Map Notebook"
+description = "A calm educational note-taking workspace where students and teachers arrange text, formulas, shapes, and connected ideas on a soft 3D infinite canvas."
+version = "1.0.0"
+id = "artifacts/mind-map-notebook"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23802
+
+[services.development]
+run = "pnpm --filter @workspace/mind-map-notebook run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mind-map-notebook", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/mind-map-notebook/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23802"
+BASE_PATH = "/"

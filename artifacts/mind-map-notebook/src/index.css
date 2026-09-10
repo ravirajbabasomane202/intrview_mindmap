@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-ring: hsl(var(--ring));
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+}
+
+:root {
+  --background: 42 37% 96%;
+  --foreground: 213 28% 20%;
+  --card: 43 42% 99%;
+  --card-foreground: 213 28% 20%;
+  --border: 38 26% 87%;
+  --input: 38 26% 87%;
+  --primary: 183 41% 30%;
+  --primary-foreground: 42 37% 97%;
+  --secondary: 36 49% 89%;
+  --muted: 42 27% 92%;
+  --muted-foreground: 209 13% 48%;
+  --accent: 13 62% 63%;
+  --accent-foreground: 213 28% 20%;
+  --destructive: 4 58% 54%;
+  --destructive-foreground: 42 37% 97%;
+  --ring: 183 41% 30%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --app-font-serif: 'Fraunces', serif;
+  --app-font-mono: 'DM Mono', monospace;
+  --radius: 0.9rem;
+}
+
+.dark {
+  --background: 213 29% 12%;
+  --foreground: 42 37% 94%;
+  --card: 213 26% 16%;
+  --card-foreground: 42 37% 94%;
+  --border: 211 18% 27%;
+  --input: 211 18% 27%;
+  --primary: 177 45% 61%;
+  --primary-foreground: 213 29% 12%;
+  --secondary: 211 20% 23%;
+  --muted: 211 20% 21%;
+  --muted-foreground: 210 14% 69%;
+  --accent: 13 62% 63%;
+  --accent-foreground: 213 29% 12%;
+  --destructive: 4 58% 60%;
+  --destructive-foreground: 213 29% 12%;
+  --ring: 177 45% 61%;
+}
+
+@layer base {
+  * { box-sizing: border-box; border-color: hsl(var(--border)); }
+  html, body, #root { min-height: 100%; margin: 0; }
+  body {
+    @apply font-sans antialiased;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+  button, input, textarea { font: inherit; }
+  button { cursor: pointer; }
+}
+
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes pulse-soft { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.animate-rise { animation: rise-in .5s cubic-bezier(.2,.8,.2,1) both; }
+.animate-pop { animation: pop-in .22s ease-out both; }
+.dot-grid {
+  background-image: radial-gradient(hsl(183 22% 42% / .17) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.paper-lines {
+  background-image: linear-gradient(hsl(183 22% 42% / .11) 1px, transparent 1px);
+  background-size: 100% 30px;
+}
+.canvas-object { touch-action: none; user-select: none; }
+.canvas-object textarea, .canvas-object input { user-select: text; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }

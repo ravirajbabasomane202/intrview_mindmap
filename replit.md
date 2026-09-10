@@ -1,6 +1,6 @@
-# [Project name]
+# Mind Map Notebook
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A calm, local-first educational note-taking app for arranging ideas on a soft 3D infinite canvas.
 
 ## Run & Operate
 
@@ -22,23 +22,29 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/mind-map-notebook/src/App.tsx` — notes home, canvas editor, canvas objects, drawing, connections, and local persistence.
+- `artifacts/mind-map-notebook/src/index.css` — notebook theme tokens, typography, motion, and canvas texture.
+- `attached_assets/Pasted--Redesigned-Prompt-Minimal-3D-Mind-Map-Notebook-1-Produ_1789073353556.txt` — original product brief.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first release is frontend-only and stores notes, objects, strokes, and connections in localStorage so the canvas works without an account or network.
+- The 3D effect is intentionally 2.5D: paper-like surfaces, soft elevation, and a dotted infinite canvas instead of WebGL or heavy camera controls.
+- The editor keeps the permanent toolbar to Add, Draw, and Connect; object formatting stays in the contextual inspector.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- My Notes home with search, favorites, note creation, deletion, and responsive note cards.
+- Canvas editor with pan, zoom, fit/reset, draggable text/formula/shape objects, inline editing, sizing, rotation, color changes, deletion, freehand drawing, and object connections.
+- Automatic local saving with a save status indicator and tolerant legacy storage normalization.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+ - Keep the canvas visually primary and the interface minimal.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Browser storage is treated as user data; format changes need read-time normalization so existing notes remain usable.
 
 ## Pointers
 

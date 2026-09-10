@@ -1,0 +1,235 @@
+**Redesigned Prompt: Minimal 3D Mind-Map Notebook**
+
+### 1. Product Vision
+Build a **simple, modern educational note-taking app** focused on a beautiful **3D interactive infinite canvas / mind-map**.
+
+It combines:
+- Visual editing (Canva-style)
+- Freehand drawing (Whiteboard)
+- Mathematical notes (formulas, diagrams, symbols)
+
+**Core philosophy**  
+> Open app → create note → place text, formulas, images, tables, drawings anywhere on a 3D canvas → connect ideas → export.
+
+Keep everything extremely minimal. The 3D canvas is the hero. Almost nothing else should compete with it.
+
+---
+
+### 2. Main Experience
+The entire application revolves around one **3D-style infinite canvas**.
+
+Users can:
+- Pan and zoom freely
+- Add objects
+- Move, resize, rotate objects
+- Connect objects into mind maps
+- Write math notes and draw diagrams
+- Organize ideas visually in 3D depth
+
+**Do not** make it a complex 3D modeling tool.  
+Use subtle **2.5D / soft 3D depth** only:
+- Soft shadows
+- Slight elevation on cards/nodes
+- Gentle perspective on the canvas
+- Subtle depth animation on selected nodes
+
+No heavy WebGL scenes, no complex camera controls, no 3D models.
+
+---
+
+### 3. Visual Style
+- Clean, modern, educational
+- Soft rounded corners
+- Light soft shadows
+- Lots of whitespace
+- Smooth, calm animations
+- Simple icons
+- Friendly for students and teachers
+
+Avoid: gradients overload, excessive buttons, crowded toolbars, complex dashboards.
+
+---
+
+### 4. Ultra-Minimal Layout
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Logo / Notes          Undo  Redo    Zoom    Save    Export  │
+├──────────────┬───────────────────────────────────────────────┤
+│              │                                               │
+│   + Add      │                                               │
+│              │                                               │
+│   Draw       │              3D INFINITE CANVAS               │
+│              │                                               │
+│   Connect    │                                               │
+│              │                                               │
+└──────────────┴───────────────────────────────────────────────┘
+```
+
+Left side has **only 3 permanent tools**.  
+Everything else is contextual or hidden.
+
+---
+
+### 5. Minimal Toolbar (Only 3 buttons)
+
+**+ Add** (one button) opens a clean menu:
+- Text
+- Math Formula
+- Image
+- Table
+- Shape
+
+**Draw** – activates drawing mode
+
+**Connect** – activates connection mode for mind maps
+
+That’s it. No more permanent buttons.
+
+Optional small icons only when needed:
+- Templates (small)
+- Pages (small thumbnail strip when multiple pages exist)
+
+---
+
+### 6. Floating Context Toolbar
+Never show formatting controls permanently.
+
+When an object is selected, a small floating bar appears:
+
+**Text**  
+Font · Size · B · I · Color · Align · ⋮
+
+**Formula**  
+Edit Formula · Size · Color · Duplicate · ⋮
+
+**Image**  
+Crop · Size · Rotate · Opacity · ⋮
+
+**General**  
+Edit · Size · Color · Duplicate · ⋮
+
+Disappears when nothing is selected.
+
+---
+
+### 7. 3D Infinite Canvas
+- Mouse wheel / pinch → zoom
+- Space + drag or middle mouse → pan
+- Zoom levels: 25% – 400% + Fit to content
+- Subtle 3D depth and soft perspective grid
+- Objects feel slightly elevated with soft shadows
+
+---
+
+### 8. Mind-Map Nodes (Signature Feature)
+Nodes are soft 3D cards:
+- Rounded
+- Soft shadow + slight depth
+- Title + optional description / formula / image / icon
+
+Users can freely move, resize, connect, duplicate, delete them.
+
+**Organize** button (appears only when connections exist) → one-click auto-layout of the mind map.
+
+---
+
+### 9. Connections
+When an object is selected, show 4 small connection handles around it.
+
+Drag from a handle to another object to create a connection.
+
+Styles (kept simple):
+- Straight
+- Curved
+- Arrow
+- Dashed
+
+---
+
+### 10. Core Objects
+
+**Text** – Heading, Subheading, Normal + basic formatting  
+**Math Formula** – Simple formula editor with common symbols + LaTeX support  
+**Image** – Upload / drag-drop / paste, move, resize, rotate, crop  
+**Table** – Simple size picker (2×2, 3×3, etc.), basic editing only  
+**Shapes** – Rectangle, Circle, Triangle, Line, Arrow  
+**Drawing** – Pen, Highlighter, Eraser, Line, Arrow (small floating toolbar only when Draw is active)
+
+---
+
+### 11. Everything Else is Contextual or Hidden
+
+- Templates → small panel when requested
+- Pages → small thumbnail strip
+- Layer order, Lock, etc. → inside ⋮ menu or right-click
+- No permanent formatting bars
+- No complex side panels
+
+---
+
+### 12. Home Screen
+Extremely simple:
+
+```
+My Notes                          + New Note
+
+🔍 Search
+
+[ Note Card ]  [ Note Card ]  [ Note Card ]
+```
+
+Each card shows preview, name, last edited, favorite.
+
+---
+
+### 13. Workflow (Must feel this simple)
+
+1. Open app → My Notes  
+2. + New Note  
+3. Choose Blank / Mind Map / Math template  
+4. Land on clean 3D canvas  
+5. Click **+ Add** → place Text / Formula / Image / Table / Shape  
+6. Use **Draw** when needed  
+7. Use **Connect** to link ideas  
+8. Move everything freely in 3D space  
+9. Auto-saves  
+10. Export → PDF or PNG
+
+---
+
+### 14. Technical Principles
+- Every item is an object (id, type, position, size, rotation, zIndex, style, content)
+- Connections are separate objects linking source ↔ target
+- Auto-save everything (objects, positions, connections, drawings, pages)
+- Smooth performance with many objects
+- Undo / Redo (Ctrl+Z / Ctrl+Y) for all actions
+- Basic keyboard shortcuts only
+
+---
+
+### 15. MVP Build Order
+1. 3D infinite canvas + pan/zoom + selection + move/resize
+2. Core objects (Text, Formula, Image, Table, Shape)
+3. Drawing tools
+4. Connections + mind-map nodes + Organize
+5. Notes list + pages + templates + auto-save
+6. Export (PDF / PNG)
+
+---
+
+### 16. Success Criteria
+A new user should be able to do this without any instructions:
+
+**Create Note → Add Text → Add Formula → Add Image → Draw → Connect ideas → Move everything on the 3D canvas → Export PDF**
+
+with almost no visible buttons and the 3D canvas feeling like the main star of the product.
+
+---
+
+**Key changes made for you:**
+- Reduced permanent buttons to only **3** (+ Add, Draw, Connect)
+- Made the **3D canvas** the absolute center of the experience
+- Removed almost all permanent UI chrome
+- Kept everything contextual
+- Strengthened the “simple 3D mind-map notebook” identity while staying true to the original educational goal

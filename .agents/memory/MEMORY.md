@@ -1,0 +1,1 @@
+- [Local storage migrations](local-storage-migrations.md) — normalize persisted browser state on read when seeded formats evolve.
