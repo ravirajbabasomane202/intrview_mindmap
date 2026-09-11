@@ -28,7 +28,8 @@ A calm, local-first educational note-taking app for arranging ideas on a soft 3D
 
 ## Architecture decisions
 
-- The first release is frontend-only and stores notes, objects, strokes, and connections in localStorage so the canvas works without an account or network.
+- The app remains local-first: notes, objects, strokes, and connections are always stored in localStorage so the canvas works without an account or network. When a user signs in, the browser syncs notes to the API and keeps the local cache available offline.
+- Authentication uses the Replit-managed Clerk tenant. The API protects synced note records by Clerk user ID, and note writes use note-level last-write-wins conflict protection based on client timestamps.
 - The 3D effect is intentionally 2.5D: paper-like surfaces, soft elevation, and a dotted infinite canvas instead of WebGL or heavy camera controls.
 - The editor keeps the permanent toolbar to Add, Draw, and Connect; object formatting stays in the contextual inspector.
 
@@ -36,6 +37,7 @@ A calm, local-first educational note-taking app for arranging ideas on a soft 3D
 
 - My Notes home with search, favorites, note creation, deletion, and responsive note cards.
 - Canvas editor with pan, zoom, fit/reset, draggable text/formula/image/table/shape objects, inline editing, sizing, rotation, color changes, deletion, freehand drawing, object connections, undo/redo, and PNG/PDF export.
+- Optional account-backed sync with branded sign-in/sign-up screens, synced/offline status, cross-device note hydration, protected API routes, and cloud deletion propagation.
 - Automatic local saving with a save status indicator and tolerant legacy storage normalization.
 
 ## User preferences

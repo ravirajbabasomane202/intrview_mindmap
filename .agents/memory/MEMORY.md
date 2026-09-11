@@ -1,1 +1,2 @@
 - [Local storage migrations](local-storage-migrations.md) — normalize persisted browser state on read when seeded formats evolve.
+- [Cloud sync conflict policy](cloud-sync-conflicts.md) — keep local-first caching and reject writes older than the server copy at whole-note granularity.

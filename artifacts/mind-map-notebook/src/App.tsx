@@ -1,5 +1,8 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ClerkProvider, Show, SignIn, SignUp, useAuth, useClerk, useUser } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -8,7 +11,7 @@ import {
   Minus, MousePointer2, Palette, PanelRight, Plus, Redo2, Search, Shapes, Sigma,
   Sparkles, Star, Table2, Trash2, Undo2, ZoomIn,
 } from 'lucide-react';
-import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
+import { Link, Redirect, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import NotFound from '@/pages/not-found';
 
 type ObjectType = 'text' | 'formula' | 'image' | 'table' | 'shape';
@@ -43,6 +46,9 @@ type Note = {
 const queryClient = new QueryClient();
 const STORAGE_KEY = 'mind-map-notebook-v1';
 const colors = ['#d9ebe3', '#f7dfbd', '#f4cfc8', '#d8e4ee', '#e4ddf1'];
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
 const seedNotes: Note[] = [
   {
@@ -103,6 +109,110 @@ function readNotes(): Note[] {
   }
 }
 
+type SyncState = 'local' | 'syncing' | 'synced' | 'offline' | 'conflict';
+
+function syncReadyDate(value: string) {
+  return Number.isNaN(Date.parse(value)) ? new Date().toISOString() : value;
+}
+
+async function saveNoteToCloud(note: Note) {
+  const normalized = { ...note, updatedAt: syncReadyDate(note.updatedAt) };
+  const response = await fetch(`/api/notes/${encodeURIComponent(normalized.id)}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note: normalized, clientUpdatedAt: normalized.updatedAt }),
+  });
+  if (response.status === 409) {
+    const payload = await response.json() as { note?: Note };
+    return { conflict: true, note: payload.note };
+  }
+  if (!response.ok) throw new Error(`Sync failed with ${response.status}`);
+  return { conflict: false, note: normalized };
+}
+
+async function deleteNoteFromCloud(id: string) {
+  const response = await fetch(`/api/notes/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!response.ok && response.status !== 401) throw new Error(`Delete sync failed with ${response.status}`);
+}
+
+function useCloudNotesSync(notes: Note[], setNotes: Dispatch<SetStateAction<Note[]>>) {
+  const { isSignedIn } = useAuth();
+  const [syncState, setSyncState] = useState<SyncState>('local');
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    hydratedRef.current = false;
+    if (!isSignedIn) {
+      setSyncState('local');
+      return;
+    }
+    let cancelled = false;
+    const hydrate = async () => {
+      setSyncState('syncing');
+      try {
+        const response = await fetch('/api/notes', { credentials: 'include' });
+        if (!response.ok) throw new Error(`Sync failed with ${response.status}`);
+        const serverNotes = await response.json() as Note[];
+        const serverById = new Map(serverNotes.map((note) => [note.id, note]));
+        const localById = new Map(notes.map((note) => [note.id, note]));
+        const merged = new Map<string, Note>();
+        const pendingUploads: Note[] = [];
+
+        for (const localNote of notes) {
+          const serverNote = serverById.get(localNote.id);
+          if (!serverNote || Date.parse(syncReadyDate(localNote.updatedAt)) > Date.parse(syncReadyDate(serverNote.updatedAt))) {
+            const normalized = { ...localNote, updatedAt: syncReadyDate(localNote.updatedAt) };
+            merged.set(localNote.id, normalized);
+            pendingUploads.push(normalized);
+          } else {
+            merged.set(localNote.id, serverNote);
+          }
+        }
+        for (const serverNote of serverNotes) {
+          if (!merged.has(serverNote.id)) merged.set(serverNote.id, serverNote);
+        }
+
+        if (cancelled) return;
+        const mergedNotes = [...merged.values()];
+        setNotes(mergedNotes);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedNotes));
+        await Promise.all(pendingUploads.map((note) => saveNoteToCloud(note)));
+        if (!cancelled) {
+          hydratedRef.current = true;
+          setSyncState('synced');
+        }
+      } catch {
+        if (!cancelled) {
+          hydratedRef.current = true;
+          setSyncState('offline');
+        }
+      }
+    };
+    void hydrate();
+    return () => { cancelled = true; };
+  }, [isSignedIn]);
+
+  useEffect(() => {
+    if (!isSignedIn || !hydratedRef.current) return;
+    const timer = window.setTimeout(async () => {
+      setSyncState('syncing');
+      try {
+        const results = await Promise.all(notes.map((note) => saveNoteToCloud(note)));
+        setSyncState(results.some((result) => result.conflict) ? 'conflict' : 'synced');
+      } catch {
+        setSyncState('offline');
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [isSignedIn, notes]);
+
+  return syncState;
+}
+
 function uid(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -122,6 +232,28 @@ function Logo({ compact = false }: { compact?: boolean }) {
       {!compact && <span className="font-serif text-[1.12rem] font-semibold tracking-[-.03em]">Mind Map <span className="text-[hsl(var(--primary))]">Notebook</span></span>}
     </div>
   );
+}
+
+function syncLabel(state: SyncState) {
+  if (state === 'syncing') return 'Syncing…';
+  if (state === 'synced') return 'Synced';
+  if (state === 'offline') return 'Offline · saved locally';
+  if (state === 'conflict') return 'Needs review';
+  return 'Local only';
+}
+
+function AuthControls({ compact = false }: { compact?: boolean }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  const { user } = useUser();
+  if (!isLoaded) return <span className="h-9 w-20 animate-pulse rounded-xl bg-[hsl(var(--muted))]" />;
+  if (!isSignedIn) {
+    return <Link href="/sign-in" className="rounded-xl border border-[hsl(var(--border))] px-3 py-2 text-xs font-semibold text-[hsl(var(--primary))] transition-colors hover:bg-[hsl(var(--muted))]" data-testid="link-sign-in">Sign in</Link>;
+  }
+  return <button type="button" onClick={() => void signOut({ redirectUrl: basePath || '/' })} className={`flex items-center gap-2 rounded-xl text-xs font-semibold text-[hsl(var(--muted-foreground))] transition-colors hover:text-[hsl(var(--foreground))] ${compact ? 'px-1' : 'px-2 py-1.5 hover:bg-[hsl(var(--muted))]'}`} data-testid="button-sign-out">
+    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-[10px] font-bold text-[hsl(var(--primary-foreground))]">{user?.firstName?.slice(0, 1) ?? user?.emailAddresses[0]?.emailAddress.slice(0, 1).toUpperCase() ?? 'M'}</span>
+    {!compact && <span className="hidden max-w-24 truncate sm:inline">{user?.firstName ?? 'Account'}</span>}
+  </button>;
 }
 
 function IconButton({ label, children, onClick, active = false, testId }: { label: string; children: ReactNode; onClick: () => void; active?: boolean; testId: string }) {
@@ -162,9 +294,11 @@ function templateObjects(template: string): CanvasObject[] {
 function Home() {
   const [notes, setNotes] = useState<Note[]>(readNotes);
   const [, setLocation] = useLocation();
+  const { isSignedIn } = useAuth();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
+  const syncState = useCloudNotesSync(notes, setNotes);
 
   useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)), [notes]);
 
@@ -180,7 +314,10 @@ function Home() {
   };
   const toggleFavorite = (id: string) => setNotes((current) => current.map((n) => n.id === id ? { ...n, favorite: !n.favorite, updatedAt: new Date().toISOString() } : n));
   const removeNote = (id: string) => {
-    if (window.confirm('Delete this note? This cannot be undone.')) setNotes((current) => current.filter((n) => n.id !== id));
+    if (window.confirm('Delete this note? This cannot be undone.')) {
+      setNotes((current) => current.filter((n) => n.id !== id));
+      if (isSignedIn) void deleteNoteFromCloud(id).catch(() => undefined);
+    }
   };
   const visibleNotes = notes.filter((note) => (filter === 'all' || note.favorite) && note.title.toLowerCase().includes(search.toLowerCase()));
 
@@ -189,8 +326,8 @@ function Home() {
       <header className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-5 sm:px-10 lg:px-14">
         <Logo />
         <div className="flex items-center gap-3">
-          <span className="hidden text-xs font-medium text-[hsl(var(--muted-foreground))] sm:block">A quiet place for ideas</span>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-xs font-bold text-[hsl(var(--primary-foreground))]" data-testid="avatar-user">AM</div>
+          <span className="hidden text-xs font-medium text-[hsl(var(--muted-foreground))] sm:block">{syncLabel(syncState)}</span>
+          <AuthControls />
         </div>
       </header>
       <section className="mx-auto max-w-[1280px] px-5 pb-10 pt-10 sm:px-10 sm:pt-16 lg:px-14">
@@ -254,7 +391,7 @@ function Home() {
             ))}
           </div>
         )}
-        <footer className="mt-16 flex items-center justify-between border-t border-[hsl(var(--border))] pt-5 text-xs text-[hsl(var(--muted-foreground))]"><span>Mind Map Notebook</span><span>Local & private by default</span></footer>
+        <footer className="mt-16 flex items-center justify-between border-t border-[hsl(var(--border))] pt-5 text-xs text-[hsl(var(--muted-foreground))]"><span>Mind Map Notebook</span><span>{syncState === 'synced' ? 'Private cloud sync enabled' : 'Local-first & private'}</span></footer>
       </section>
     </main>
   );
@@ -379,6 +516,7 @@ function NoteEditor() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ kind: 'pan' | 'object' | 'draw'; pointerX: number; pointerY: number; startX: number; startY: number; objectId?: string } | null>(null);
+  const syncState = useCloudNotesSync(notes, setNotes);
 
   useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)), [notes]);
   useEffect(() => {
@@ -517,6 +655,11 @@ function NoteEditor() {
     dragRef.current = null;
   };
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  const deleteSelectedObject = () => {
+    if (!selected) return;
+    mutateNote((current) => ({ ...current, updatedAt: new Date().toISOString(), objects: current.objects.filter((object) => object.id !== selected.id) }));
+    setSelectedId(null);
+  };
   const printNote = () => {
     document.title = note?.title ?? 'Mind Map Notebook';
     window.print();
@@ -537,11 +680,11 @@ function NoteEditor() {
          <div className="flex items-center gap-1.5 sm:gap-3">
            <button type="button" onClick={undo} aria-label="Undo" title="Undo" data-testid="button-undo" className="hidden h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] sm:flex"><Undo2 size={16} /></button>
            <button type="button" onClick={redo} aria-label="Redo" title="Redo" data-testid="button-redo" className="hidden h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] sm:flex"><Redo2 size={16} /></button>
-           <span className="hidden items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))] sm:flex" data-testid="status-save"><Check size={14} className="text-[hsl(var(--primary))]" /> {saveState}</span>
+           <span className="hidden items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))] sm:flex" data-testid="status-save"><Check size={14} className="text-[hsl(var(--primary))]" /> {syncState === 'synced' ? 'All changes synced' : saveState}</span>
            <button type="button" onClick={() => void exportNoteAsPng(note)} aria-label="Export PNG" title="Export PNG" data-testid="button-export-png" className="flex h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"><FileImage size={16} /></button>
            <button type="button" onClick={printNote} aria-label="Export PDF" title="Print or export PDF" data-testid="button-export-pdf" className="flex h-9 w-9 items-center justify-center rounded-xl text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"><Download size={16} /></button>
            <button type="button" onClick={() => setShowInspector((value) => !value)} className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${showInspector ? 'bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'}`} aria-label="Toggle inspector" data-testid="button-toggle-inspector"><PanelRight size={17} /></button>
-           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-[10px] font-bold text-[hsl(var(--primary-foreground))]">AM</div>
+           <AuthControls compact />
          </div>
       </header>
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -601,7 +744,7 @@ function NoteEditor() {
             <IconButton label="Fit canvas" onClick={resetView} testId="button-fit-canvas"><Maximize2 size={15} /></IconButton>
           </div>
         </section>
-        {showInspector && <Inspector object={selected} onUpdate={updateObject} onDelete={() => { if (selected) { updateObject(selected.id, {}); setNotes((current) => current.map((n) => n.id === id ? { ...n, objects: n.objects.filter((o) => o.id !== selected.id) } : n)); setSelectedId(null); } }} />}
+         {showInspector && <Inspector object={selected} onUpdate={updateObject} onDelete={deleteSelectedObject} />}
       </div>
     </main>
   );
@@ -623,8 +766,31 @@ function Inspector({ object, onUpdate, onDelete }: { object?: CanvasObject; onUp
   );
 }
 
+function HomeGate() {
+  return <><Show when="signed-in"><Redirect to="/user-portal" /></Show><Show when="signed-out"><Home /></Show></>;
+}
+
+function UserPortal() {
+  return <><Show when="signed-in"><Home /></Show><Show when="signed-out"><Redirect to="/" /></Show></>;
+}
+
+function SignInPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-[hsl(var(--background))] px-4"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+}
+
+function SignUpPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-[hsl(var(--background))] px-4"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+}
+
 function Router() {
-  return <Switch><Route path="/" component={Home} /><Route path="/note/:id" component={NoteEditor} /><Route component={NotFound} /></Switch>;
+  return <Switch>
+    <Route path="/" component={HomeGate} />
+    <Route path="/user-portal" component={UserPortal} />
+    <Route path="/sign-in/*?" component={SignInPage} />
+    <Route path="/sign-up/*?" component={SignUpPage} />
+    <Route path="/note/:id" component={NoteEditor} />
+    <Route component={NotFound} />
+  </Switch>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -633,7 +799,58 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 function App() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><RoutedErrorBoundary><Router /></RoutedErrorBoundary></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY');
+  return <WouterRouter base={basePath}>
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={{
+        theme: shadcn,
+        cssLayerName: 'clerk',
+        options: {
+          logoPlacement: 'inside',
+          logoLinkUrl: basePath || '/',
+          logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+        },
+        variables: {
+          colorPrimary: '#1f5e60',
+          colorForeground: '#263238',
+          colorMutedForeground: '#68747a',
+          colorBackground: '#fbf9f4',
+          colorInput: '#fffdf9',
+          colorInputForeground: '#263238',
+          colorNeutral: '#e3ded4',
+          colorDanger: '#b24b43',
+          fontFamily: 'DM Sans, sans-serif',
+          borderRadius: '0.85rem',
+        },
+        elements: {
+          rootBox: 'w-full flex justify-center',
+          cardBox: 'bg-[#fbf9f4] rounded-2xl w-[440px] max-w-full overflow-hidden',
+          card: '!shadow-none !border-0 !bg-transparent !rounded-none',
+          footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
+          headerTitle: 'font-serif text-[#263238]',
+          headerSubtitle: 'text-[#68747a]',
+          formFieldLabel: 'text-[#263238]',
+          formFieldInput: 'bg-[#fffdf9] border-[#e3ded4]',
+          formButtonPrimary: 'bg-[#1f5e60] hover:bg-[#184c4e]',
+          footerActionLink: 'text-[#1f5e60]',
+          footerActionText: 'text-[#68747a]',
+          dividerText: 'text-[#68747a]',
+        },
+      }}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      localization={{
+        signIn: { start: { title: 'Welcome back', subtitle: 'Return to your thinking space' } },
+        signUp: { start: { title: 'Create your notebook', subtitle: 'Keep your ideas available everywhere' } },
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider><RoutedErrorBoundary><Router /></RoutedErrorBoundary><Toaster /></TooltipProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
+  </WouterRouter>;
 }
 
 export default App;
