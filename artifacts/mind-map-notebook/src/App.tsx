@@ -308,7 +308,11 @@ function Home() {
       template, updatedAt: new Date().toISOString(), favorite: false,
       objects: templateObjects(template), connections: [], strokes: [],
     };
-    setNotes((current) => [note, ...current]);
+    setNotes((current) => {
+      const nextNotes = [note, ...current];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextNotes));
+      return nextNotes;
+    });
     setTemplateMenuOpen(false);
     setLocation(`/note/${note.id}`);
   };
