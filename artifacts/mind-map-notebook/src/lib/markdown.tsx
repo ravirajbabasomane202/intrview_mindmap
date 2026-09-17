@@ -78,3 +78,30 @@ export function renderMarkdownBlock(content: string): ReactNode {
     </>
   );
 }
+
+// Same syntax this file's renderers turn into styled elements (headings, !box prefixes,
+// bold/italic/strike/highlight/underline/badges/inline-code), collapsed to plain text instead.
+// For spots that can't host the styled block output — a compact inline chip, an export routine —
+// but still shouldn't show raw "!concept **solver:**" source to the reader.
+export function stripMarkdownToPlainText(source: string): string {
+  return source
+    .split('\n')
+    .map((rawLine) => {
+      let line = rawLine;
+      line = line.replace(/^#{1,6}\s+/, '');
+      line = line.replace(/^>\s?/, '');
+      line = line.replace(/^[-*]\s+/, '• ');
+      line = line.replace(/^!(warning|tip|important|example|definition|theorem|proof|formula|keypoint|concept|question|answer|step)\s+/i, '');
+      line = line.replace(/\*\*([^*]+)\*\*/g, '$1');
+      line = line.replace(/~~([^~]+)~~/g, '$1');
+      line = line.replace(/==([^=]+)==/g, '$1');
+      line = line.replace(/<u>([^<]*)<\/u>/gi, '$1');
+      line = line.replace(/\[\[([^\]]+)\]\]/g, '$1');
+      line = line.replace(/`([^`]+)`/g, '$1');
+      line = line.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1');
+      return line;
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

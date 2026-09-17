@@ -1,9 +1,15 @@
 import { createPortal } from 'react-dom';
 import { ExternalLink, FileQuestion, Link2 } from 'lucide-react';
 import { shapeClipPath } from '../../lib/shapes';
+import { renderMarkdownBlock, stripMarkdownToPlainText } from '../../lib/markdown';
 import { CanvasObject, Page } from '../../types/canvas';
 
-const POPUP_WIDTH = 260;
+// The popup's footprint is now driven by its content (see ObjectFocusPreview / PageMiniPreview)
+// rather than a single fixed box, so these are bounds, not a fixed size: wide/tall enough to be
+// readable, capped so it never runs off screen, with internal scrolling past the cap.
+const POPUP_MIN_WIDTH = 260;
+const POPUP_MAX_WIDTH = 360;
+const POPUP_MAX_HEIGHT = 420;
 const MINI_HEIGHT = 150;
 
 // Read-only mini render of an entire page: objects placed proportionally inside a small SVG
@@ -71,23 +77,44 @@ function ObjectFocusPreview({ page, object }: { page: Page; object: CanvasObject
     })
     .filter((entry) => entry !== null);
   const displayText = object.type === 'flashcard' ? object.content.split('|||')[0] : object.content;
+  // Markdown-formatted objects (text pieces with !concept boxes, **bold**, <u>underline</u>, etc.)
+  // get the same styled render the canvas/editor use, instead of showing the raw syntax as text.
+  // Non-text objects (shapes, flashcards) keep the plain centered treatment — their content isn't
+  // markdown source.
+  const isMarkdownObject = object.type === 'text';
   return (
     <div className="space-y-2">
       <div
-        className="flex max-h-[110px] min-h-[64px] items-center justify-center overflow-hidden p-3 text-center text-sm font-medium leading-5"
-        style={{ backgroundColor: object.fill || 'hsl(var(--secondary))', color: object.color, clipPath: object.type === 'shape' ? shapeClipPath(object.shapeKind) : undefined, borderRadius: object.type === 'shape' ? undefined : 10 }}
+        className="min-h-[56px] p-3 text-sm leading-5"
+        style={{
+          backgroundColor: object.fill || 'hsl(var(--secondary))',
+          color: object.color,
+          clipPath: object.type === 'shape' ? shapeClipPath(object.shapeKind) : undefined,
+          borderRadius: object.type === 'shape' ? undefined : 10,
+          textAlign: isMarkdownObject ? 'left' : 'center',
+        }}
       >
-        <span className="line-clamp-4 whitespace-pre-line">{displayText?.trim() || <span className="opacity-60">Empty piece</span>}</span>
+        {!displayText?.trim() ? (
+          <span className="opacity-60">Empty piece</span>
+        ) : isMarkdownObject ? (
+          <div className="whitespace-pre-line font-medium">{renderMarkdownBlock(displayText)}</div>
+        ) : (
+          <span className="flex items-center justify-center whitespace-pre-line font-medium">{displayText.trim()}</span>
+        )}
       </div>
       {neighbors.length > 0 && (
         <div>
           <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Connected</p>
-          <div className="flex flex-wrap gap-1.5">
-            {neighbors.slice(0, 4).map(({ other, direction, label }) => (
-              <span key={other.id} className="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10.5px] font-medium text-[hsl(var(--foreground))]">
-                {direction === 'to' ? '→' : '←'} {label ? `${label}: ` : ''}{(other.content || other.type).slice(0, 20) || other.type}
-              </span>
-            ))}
+          <div className="flex flex-col gap-1">
+            {neighbors.slice(0, 6).map(({ other, direction, label }) => {
+              const neighborText = stripMarkdownToPlainText(other.content || '') || other.type;
+              return (
+                <span key={other.id} className="flex items-start gap-1.5 rounded-lg bg-[hsl(var(--muted))] px-2 py-1 text-[11px] font-medium leading-4 text-[hsl(var(--foreground))]">
+                  <span className="shrink-0 text-[hsl(var(--muted-foreground))]">{direction === 'to' ? '→' : '←'}</span>
+                  <span className="min-w-0 break-words">{label ? <span className="text-[hsl(var(--muted-foreground))]">{label}: </span> : null}{neighborText}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -117,18 +144,24 @@ export function LinkPreviewPopup({
   // viewport, and clamp horizontally so it never runs off either edge.
   const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1200;
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const estimatedHeight = 230;
+  // The card's real height now depends on its content (a long !concept box, several connected
+  // sub-nodes), so we can't know it before render. Estimate generously for placement, clamp to
+  // POPUP_MAX_HEIGHT with internal scrolling, and clamp vertical position to the viewport so a
+  // card that ends up taller than estimated still stays fully on screen either way it opens.
+  const estimatedHeight = Math.min(POPUP_MAX_HEIGHT, 260);
   const opensAbove = anchorRect.bottom + estimatedHeight + 12 > viewportH;
-  const top = opensAbove ? Math.max(8, anchorRect.top - estimatedHeight - 10) : anchorRect.bottom + 10;
-  const left = Math.min(Math.max(8, anchorRect.left - POPUP_WIDTH / 2), viewportW - POPUP_WIDTH - 8);
+  const rawTop = opensAbove ? anchorRect.top - estimatedHeight - 10 : anchorRect.bottom + 10;
+  const top = Math.min(Math.max(8, rawTop), Math.max(8, viewportH - estimatedHeight - 8));
+  const width = Math.min(POPUP_MAX_WIDTH, Math.max(POPUP_MIN_WIDTH, viewportW - 16));
+  const left = Math.min(Math.max(8, anchorRect.left - width / 2), viewportW - width - 8);
 
   return createPortal(
     <div
       role="tooltip"
       onMouseEnter={onPointerEnter}
       onMouseLeave={onPointerLeave}
-      className="fixed z-[9999] animate-pop rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 shadow-2xl"
-      style={{ top, left, width: POPUP_WIDTH }}
+      className="fixed z-[9999] animate-pop overflow-y-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 shadow-2xl"
+      style={{ top, left, width, maxHeight: POPUP_MAX_HEIGHT }}
       data-testid="popup-link-preview"
     >
       {!targetPage ? (
