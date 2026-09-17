@@ -1,6 +1,6 @@
-# Mind Map Notebook
+# [Project name]
 
-A calm, local-first educational note-taking app for arranging ideas on a soft 3D infinite canvas.
+_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
 
 ## Run & Operate
 
@@ -22,31 +22,30 @@ A calm, local-first educational note-taking app for arranging ideas on a soft 3D
 
 ## Where things live
 
-- `artifacts/mind-map-notebook/src/App.tsx` — notes home, templates, canvas editor, canvas objects, drawing, connections, export, and local persistence.
-- `artifacts/mind-map-notebook/src/index.css` — notebook theme tokens, typography, motion, and canvas texture.
-- `attached_assets/Pasted--Redesigned-Prompt-Minimal-3D-Mind-Map-Notebook-1-Produ_1789073353556.txt` — original product brief.
+- DB schema (source of truth): `lib/db/src/schema/` — `notes.ts` (notes table + denormalized metadata columns), `folders.ts`, `canvas.ts` (structured `notes_pages`/`canvas_objects`, mirrored from `notes.note`)
+- Notes API: `artifacts/api-server/src/routes/notes.ts`, with the payload-validation and structured-storage-decomposition helpers in `artifacts/api-server/src/lib/note-schema.ts` and `note-decompose.ts`
+- All routers are wired up in `artifacts/api-server/src/routes/index.ts` — a route file existing under `routes/` does **not** mean it's live; it must be `router.use()`'d there too
+- Frontend note/page/object types: `artifacts/mind-map-notebook/src/types/canvas.ts` (not imported by the API server — the two sides validate independently)
 
 ## Architecture decisions
 
-- The app remains local-first: notes, objects, strokes, and connections are always stored in localStorage so the canvas works without an account or network. When a user signs in, the browser syncs notes to the API and keeps the local cache available offline.
-- Authentication uses the Replit-managed Clerk tenant. The API protects synced note records by Clerk user ID, and note writes use note-level last-write-wins conflict protection based on client timestamps.
-- The 3D effect is intentionally 2.5D: paper-like surfaces, soft elevation, and a dotted infinite canvas instead of WebGL or heavy camera controls.
-- The editor keeps the permanent toolbar to Add, Draw, and Connect; object formatting stays in the contextual inspector.
-
-## Product
-
-- My Notes home with search, favorites, note creation, deletion, and responsive note cards.
-- Canvas editor with pan, zoom, fit/reset, draggable text/formula/image/table/shape objects, inline editing, sizing, rotation, color changes, deletion, freehand drawing, object connections, undo/redo, and PNG/PDF export.
-- Optional account-backed sync with branded sign-in/sign-up screens, synced/offline status, cross-device note hydration, protected API routes, and cloud deletion propagation.
-- Automatic local saving with a save status indicator and tolerant legacy storage normalization.
-
-## User preferences
-
- - Keep the canvas visually primary and the interface minimal.
+- `notesTable.note` (the whole-note jsonb blob) stays the source of truth for `GET /notes` and the whole-note last-write-wins conflict check (see `.agents/memory/cloud-sync-conflicts.md`). `notes_pages`/`canvas_objects` are a mirror, kept in sync on every write, that exists purely to make pages/objects independently queryable and partially updatable — see `.agents/memory/structured-canvas-storage.md`.
+- Notes/pages/objects use client-generated, non-globally-unique ids (see `lib/uid.ts`), so every structured table's primary key is scoped by the full ownership chain (e.g. `canvas_objects` PK is `(id, pageId, noteId, userId)`), matching the pattern `notesTable` already used for `(id, userId)`.
+- The note payload is validated with Zod (`artifacts/api-server/src/lib/note-schema.ts`) before any of it is trusted for indexed columns or structured decomposition — deliberately not exhaustive on type-specific canvas-object fields (chart data, table styles, ...), which stay schemaless in `content`.
 
 ## Gotchas
 
-- Browser storage is treated as user data; format changes need read-time normalization so existing notes remain usable.
+- New route files under `artifacts/api-server/src/routes/` must be added to `routes/index.ts` or they're dead code — this had already happened once (`notes.ts`/`folders.ts` existed but weren't mounted) before being fixed.
+- After editing `lib/db/src/schema/*`, run `pnpm --filter @workspace/db run push` (or `push-force` for a throwaway/dev DB) before the API server will actually have the new tables/columns.
+- If `tsc --build` complains an output `.d.ts` "has not been built from source", the `lib/*/dist` build info is stale — delete `lib/*/dist` and any `lib/*/*.tsbuildinfo` and rerun.
+
+## Product
+
+_Describe the high-level user-facing capabilities of this app once they exist._
+
+## User preferences
+
+_Populate as you build — explicit user instructions worth remembering across sessions._
 
 ## Pointers
 

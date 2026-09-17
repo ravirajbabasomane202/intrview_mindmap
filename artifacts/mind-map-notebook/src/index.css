@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@source "./src";
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -23,46 +24,79 @@
   --font-mono: var(--app-font-mono);
 }
 
+/* ————— Light: "desk in morning light" ————— */
 :root {
-  --background: 42 37% 96%;
-  --foreground: 213 28% 20%;
-  --card: 43 42% 99%;
-  --card-foreground: 213 28% 20%;
-  --border: 38 26% 87%;
-  --input: 38 26% 87%;
-  --primary: 183 41% 30%;
+  --background: 42 30% 97%;
+  --foreground: 213 30% 17%;
+  --card: 43 40% 99%;
+  --card-foreground: 213 30% 17%;
+  --border: 38 22% 85%;
+  --input: 38 22% 85%;
+  --primary: 184 48% 24%;
   --primary-foreground: 42 37% 97%;
   --secondary: 36 49% 89%;
-  --muted: 42 27% 92%;
-  --muted-foreground: 209 13% 48%;
-  --accent: 13 62% 63%;
-  --accent-foreground: 213 28% 20%;
+  --muted: 40 24% 93%;
+  --muted-foreground: 213 18% 38%;
+  --accent: 11 68% 56%;
+  --accent-foreground: 213 30% 17%;
   --destructive: 4 58% 54%;
   --destructive-foreground: 42 37% 97%;
-  --ring: 183 41% 30%;
+  --ring: 184 48% 24%;
+  --ink-3: 212 12% 52%;
+  --line-soft: 38 20% 90%;
+  --teal-soft: 184 35% 93%;
+  --coral-soft: 12 75% 94%;
+  --ok: 152 45% 34%;
+  --warn: 36 75% 45%;
   --app-font-sans: 'DM Sans', sans-serif;
   --app-font-serif: 'Fraunces', serif;
   --app-font-mono: 'DM Mono', monospace;
   --radius: 0.9rem;
+
+  /* ————— Content palette: default fill/ink for new canvas objects ————— */
+  --note-fill: 42 60% 82%;      --note-ink: 213 30% 24%;
+  --formula-fill: 205 40% 86%;  --formula-ink: 213 30% 24%;
+  --paper-fill: 40 24% 93%;     --paper-ink: 213 30% 24%;
+  --shape-fill: 154 30% 86%;    --shape-ink: 184 48% 22%;
+  --code-fill: 210 14% 20%;     --code-ink: 40 20% 92%;
+  --flashcard-fill: 262 32% 88%; --flashcard-ink: 262 30% 38%;
+  --chart-1: 184 48% 24%; --chart-2: 32 55% 48%; --chart-3: 262 65% 68%;
+  --chart-4: 2 55% 62%;   --chart-5: 205 45% 52%; --chart-6: 100 25% 48%;
 }
 
+/* ————— Dark: "paper at night" (warm, not blue-slate) ————— */
 .dark {
-  --background: 213 29% 12%;
-  --foreground: 42 37% 94%;
-  --card: 213 26% 16%;
-  --card-foreground: 42 37% 94%;
-  --border: 211 18% 27%;
-  --input: 211 18% 27%;
-  --primary: 177 45% 61%;
-  --primary-foreground: 213 29% 12%;
+  --background: 210 16% 11%;
+  --foreground: 42 30% 92%;
+  --card: 210 14% 15%;
+  --card-foreground: 42 30% 92%;
+  --border: 210 12% 24%;
+  --input: 210 12% 24%;
+  --primary: 180 40% 64%;
+  --primary-foreground: 210 16% 11%;
   --secondary: 211 20% 23%;
-  --muted: 211 20% 21%;
-  --muted-foreground: 210 14% 69%;
-  --accent: 13 62% 63%;
-  --accent-foreground: 213 29% 12%;
+  --muted: 210 14% 18%;
+  --muted-foreground: 40 14% 70%;
+  --accent: 12 80% 66%;
+  --accent-foreground: 210 16% 11%;
   --destructive: 4 58% 60%;
-  --destructive-foreground: 213 29% 12%;
-  --ring: 177 45% 61%;
+  --destructive-foreground: 210 16% 11%;
+  --ring: 180 40% 64%;
+  --ink-3: 40 10% 60%;
+  --line-soft: 210 12% 20%;
+  --teal-soft: 190 30% 18%;
+  --coral-soft: 12 40% 18%;
+  --ok: 152 40% 55%;
+  --warn: 36 70% 60%;
+
+  --note-fill: 42 35% 30%;      --note-ink: 42 30% 92%;
+  --formula-fill: 205 24% 26%;  --formula-ink: 42 30% 92%;
+  --paper-fill: 210 14% 19%;    --paper-ink: 42 30% 92%;
+  --shape-fill: 154 18% 24%;    --shape-ink: 150 30% 78%;
+  --code-fill: 210 16% 12%;     --code-ink: 40 20% 90%;
+  --flashcard-fill: 262 20% 26%; --flashcard-ink: 262 35% 84%;
+  --chart-1: 180 40% 64%; --chart-2: 32 60% 62%; --chart-3: 262 55% 74%;
+  --chart-4: 4 55% 68%;   --chart-5: 205 50% 66%; --chart-6: 100 25% 62%;
 }
 
 @layer base {
@@ -82,14 +116,94 @@
 @keyframes pulse-soft { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 .animate-rise { animation: rise-in .5s cubic-bezier(.2,.8,.2,1) both; }
 .animate-pop { animation: pop-in .22s ease-out both; }
+
+/* ————— Adaptive dot grid (was hard-coded teal-on-cream) ————— */
 .dot-grid {
-  background-image: radial-gradient(hsl(183 22% 42% / .17) 1px, transparent 1px);
+  background-image: radial-gradient(hsl(var(--ring)/.14) 1px, transparent 1px);
   background-size: 22px 22px;
 }
+.dark .dot-grid {
+  background-image: radial-gradient(hsl(var(--foreground)/.10) 1px, transparent 1px);
+}
 .paper-lines {
-  background-image: linear-gradient(hsl(183 22% 42% / .11) 1px, transparent 1px);
+  background-image: linear-gradient(hsl(var(--ring)/.10) 1px, transparent 1px);
   background-size: 100% 30px;
 }
+
+/* ————— Paper noise (2%) ————— */
+.paper-noise::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: .35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ————— Elevation: paper physics ————— */
+.elev-1 { box-shadow: 0 1px 2px hsl(210 20% 25%/.06), 0 2px 6px hsl(183 30% 25%/.07); }
+.elev-2 {
+  box-shadow: 0 2px 4px hsl(210 20% 25%/.07), 0 8px 20px hsl(183 30% 25%/.10),
+              inset 0 1px 0 hsl(0 0% 100%/.55);
+}
+.elev-3 { box-shadow: 0 4px 8px hsl(210 20% 25%/.08), 0 16px 40px hsl(183 30% 25%/.14); }
+.dark .elev-1 { box-shadow: 0 1px 2px hsl(0 0% 0%/.30); }
+.dark .elev-2 { box-shadow: 0 2px 4px hsl(0 0% 0%/.35), inset 0 1px 0 hsl(0 0% 100%/.06); }
+.dark .elev-3 { box-shadow: 0 4px 8px hsl(0 0% 0%/.40), 0 16px 40px hsl(0 0% 0%/.45); }
+
+/* ————— Segmented control (Home tabs) ————— */
+.segmented {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: hsl(var(--muted));
+  border-radius: 999px; border: 1px solid hsl(var(--line-soft));
+}
+.segmented > button {
+  border-radius: 999px; padding: 5px 14px;
+  font-size: 13px; font-weight: 500; line-height: 18px;
+  color: hsl(var(--muted-foreground));
+  transition: all .15s ease-out;
+}
+.segmented > button:hover { color: hsl(var(--foreground)); }
+.segmented > button.segmented-active {
+  background: hsl(var(--card)); color: hsl(var(--foreground));
+  box-shadow: 0 1px 2px hsl(210 20% 25%/.08);
+}
+
+/* ————— Sticky note treatment: tight radius + bottom-edge paper curl ————— */
+.sticky-note { border-radius: 4px !important; }
+.sticky-note::before {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 14px;
+  pointer-events: none; border-radius: 0 0 4px 4px;
+  background: linear-gradient(to top, hsl(210 20% 10% / .16), transparent);
+}
+.dark .sticky-note::before {
+  background: linear-gradient(to top, hsl(0 0% 0% / .35), transparent);
+}
+
+/* ————— Grid styles (zoom-pill grid switcher) ————— */
+.grid-squared {
+  background-image: linear-gradient(hsl(var(--ring)/.14) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--ring)/.14) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.dark .grid-squared {
+  background-image: linear-gradient(hsl(var(--foreground)/.10) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)/.10) 1px, transparent 1px);
+}
+.grid-none { background-image: none; }
+
+/* ————— Connection ink-settle: stroke draws in on completion ————— */
+@keyframes ink-settle { from { stroke-dashoffset: 240; } to { stroke-dashoffset: 0; } }
+.connection-settle { stroke-dasharray: 240; animation: ink-settle .38s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes draft-flow { to { stroke-dashoffset: -24; } }
+.connection-draft { animation: draft-flow .6s linear infinite; }
+
+/* ————— Delete: fade-shrink instead of a hard cut ————— */
+@keyframes fade-shrink { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.85); } }
+.animate-delete { animation: fade-shrink .16s ease-in both; }
+
+/* ————— Pan/zoom: soften the grid while the canvas is moving ————— */
+.canvas-moving.dot-grid, .canvas-moving.grid-squared { opacity: .55; transition: opacity .1s ease-out; }
+.dot-grid, .grid-squared { transition: opacity .18s ease-out; }
+
 .canvas-object { touch-action: none; user-select: none; }
 .canvas-object textarea, .canvas-object input { user-select: text; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

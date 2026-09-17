@@ -1,0 +1,23 @@
+### Remaining / verify
+
+50. ❌ **File Asset Cleanup** - Orphaned image assets not cleaned up beyond permanent note delete
+
+### Done in this pass
+- Fixed folders hierarchy (null vs undefined roots, createFolder dupes, nested notes in tree, descendant filter)
+- Fixed sections/pages hierarchy (pages derived from sectionId, assign dropdown, add page to section)
+- Selective eraser (partial freehand erase; shapes erase on hit)
+- Shape detection: rectangle, circle, ellipse, triangle, line
+- Straight line + arrow tools (already present; kept)
+- Connection arrowheads attach to object edges (no longer hidden behind centers)
+- Rich text B/I/U + markdown (already present in inspector)
+- Marquee selection (Select tool drag; Alt+drag to pan)
+- Layer controls (forward/back/front/back + context menu)
+- Lock/unlock objects
+- Grid snap toggle
+- Rotation handle on selected object
+- Compact left toolbar + Select tool + shortcuts hint
+- Contextual toolbar when object selected
+- Zoom % indicator (already present)
+- Right-click context menu
+- Keyboard shortcuts: V/P/D/L/A/E/C/T + Ctrl/Cmd+Z/Y
+- Autosave/cloud sync debounce (already present); API now accepts pages[] notes
